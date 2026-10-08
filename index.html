@@ -645,7 +645,7 @@ function renderQuestion() {
   const typeLabelMap = { fill: '空欄補充', sort: '並べ替え', conjugate: '語形変化' };
   document.getElementById('typeBadge').textContent = typeLabelMap[q.type] || q.type;
   document.getElementById('instruction').textContent = q.instruction || '';
-  document.getElementById('questionText').textContent = q.question_text || '';
+  document.getElementById('questionText').textContent = q.question_text || q.question || '';
 
   // base_form
   const bfWrap = document.getElementById('baseFormWrap');
