@@ -542,14 +542,28 @@ function showError(msg) {
 // ============================================================
 //  スタート画面の初期化
 // ============================================================
-function initStartScreen() {
+async function initStartScreen() {
   const from = document.getElementById('chapterFrom');
   const to   = document.getElementById('chapterTo');
   from.innerHTML = '';
   to.innerHTML   = '';
-  for (let i = 1; i <= 36; i++) {
-    from.innerHTML += `<option value="${i}">${i}章</option>`;
-    to.innerHTML   += `<option value="${i}" ${i===36?'selected':''}>${i}章</option>`;
+
+  // GASから章一覧を取得して動的生成
+  try {
+    const res  = await fetch(`${API_URL}?action=getChapters`);
+    const data = await res.json();
+    const chapters = data.chapters || [];
+    chapters.forEach((c, i) => {
+      const label = isNaN(Number(c)) ? c : `${c}章`;
+      from.innerHTML += `<option value="${c}">${label}</option>`;
+      to.innerHTML   += `<option value="${c}" ${i === chapters.length - 1 ? 'selected' : ''}>${label}</option>`;
+    });
+  } catch (_) {
+    // フォールバック：1〜36章
+    for (let i = 1; i <= 36; i++) {
+      from.innerHTML += `<option value="${i}">${i}章</option>`;
+      to.innerHTML   += `<option value="${i}" ${i===36?'selected':''}>${i}章</option>`;
+    }
   }
 
   // 問題形式チップ
@@ -580,11 +594,15 @@ function initStartScreen() {
 //  クイズ開始
 // ============================================================
 async function startQuiz() {
-  const chapterFrom = Number(document.getElementById('chapterFrom').value);
-  const chapterTo   = Number(document.getElementById('chapterTo').value);
+  const chapterFrom = document.getElementById('chapterFrom').value;
+  const chapterTo   = document.getElementById('chapterTo').value;
   const limit       = Number(document.getElementById('limitRange').value);
 
-  if (chapterFrom > chapterTo) {
+  const fromEl = document.getElementById('chapterFrom');
+  const toEl   = document.getElementById('chapterTo');
+  const fromIdx = [...fromEl.options].findIndex(o => o.value === chapterFrom);
+  const toIdx   = [...toEl.options].findIndex(o => o.value === chapterTo);
+  if (fromIdx > toIdx) {
     showError('開始章は終了章以下にしてください。');
     return;
   }
