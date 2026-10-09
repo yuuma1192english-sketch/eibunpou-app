@@ -861,8 +861,7 @@ function showFeedback(q, isCorrect, userAnswer) {
   const expBox = document.getElementById('explanationBox');
   const expTxt = document.getElementById('explanationText');
 
-  fb.className  = 'feedback-box show ' + (isCorrect ? 'correct-fb' : 'inco
-rrect-fb');
+  fb.className  = 'feedback-box show ' + (isCorrect ? 'correct-fb' : 'incorrect-fb');
   head.className = 'feedback-header ' + (isCorrect ? 'ok' : 'ng');
   head.textContent = isCorrect ? '✅ 正解！' : '❌ 不正解';
 
