@@ -214,6 +214,25 @@
     .answer-input.correct { border-color: var(--success); background: #f0fdf4; }
     .answer-input.incorrect { border-color: var(--danger); background: #fef2f2; }
 
+    /* choice 四択 */
+    .choice-list { display: flex; flex-direction: column; gap: 10px; }
+    .choice-btn {
+      min-height: 52px; padding: 12px 16px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 17px; font-weight: 500;
+      cursor: pointer; user-select: none;
+      text-align: left;
+      transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .choice-btn:active { transform: scale(.98); }
+    .choice-btn.selected { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
+    .choice-btn.correct  { border-color: var(--success); background: #f0fdf4; color: var(--success); font-weight: 700; }
+    .choice-btn.incorrect{ border-color: var(--danger);  background: #fef2f2; color: var(--danger); }
+    .choice-btn:disabled { opacity: .6; pointer-events: none; }
+
     /* sort 並べ替え */
     .sort-area { display: flex; flex-direction: column; gap: 12px; }
     .sort-label { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .05em; }
@@ -398,6 +417,7 @@
       <div class="type-chip selected" data-type="fill">空欄補充</div>
       <div class="type-chip selected" data-type="sort">並べ替え</div>
       <div class="type-chip selected" data-type="conjugate">語形変化</div>
+      <div class="type-chip selected" data-type="choice">四択</div>
     </div>
   </div>
 
@@ -445,6 +465,11 @@
       <input class="answer-input" id="answerInput" type="text"
              placeholder="答えを入力..." autocomplete="off"
              autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+
+    <!-- choice 四択 -->
+    <div id="choiceArea" style="display:none">
+      <div class="choice-list" id="choiceList"></div>
     </div>
 
     <!-- sort 並べ替え -->
@@ -514,7 +539,7 @@ let current     = 0;
 let correctCount = 0;
 let wrongCount  = 0;
 let answered    = false;
-let selectedTypes = new Set(['fill','sort','conjugate']);
+let selectedTypes = new Set(['fill','sort','conjugate','choice']);
 let lastParams  = {};
 
 // ============================================================
@@ -660,7 +685,7 @@ function renderQuestion() {
   document.getElementById('scoreText').innerHTML = `✅ ${correctCount} &nbsp;❌ ${wrongCount}`;
 
   // 問題情報
-  const typeLabelMap = { fill: '空欄補充', sort: '並べ替え', conjugate: '語形変化' };
+  const typeLabelMap = { fill: '空欄補充', sort: '並べ替え', conjugate: '語形変化', choice: '四択' };
   document.getElementById('typeBadge').textContent = typeLabelMap[q.type] || q.type;
   document.getElementById('instruction').textContent = q.instruction || '';
   document.getElementById('questionText').textContent = q.question_text || q.question || '';
@@ -675,11 +700,14 @@ function renderQuestion() {
   }
 
   // エリア切り替え
-  document.getElementById('fillArea').style.display = q.type !== 'sort' ? 'block' : 'none';
-  document.getElementById('sortArea').style.display = q.type === 'sort' ? 'block' : 'none';
+  document.getElementById('fillArea').style.display   = (q.type === 'fill' || q.type === 'conjugate') ? 'block' : 'none';
+  document.getElementById('sortArea').style.display   = q.type === 'sort'   ? 'block' : 'none';
+  document.getElementById('choiceArea').style.display = q.type === 'choice' ? 'block' : 'none';
 
   if (q.type === 'sort') {
     renderSort(q);
+  } else if (q.type === 'choice') {
+    renderChoice(q);
   } else {
     const inp = document.getElementById('answerInput');
     inp.value = '';
@@ -720,6 +748,27 @@ function renderSort(q) {
   words.forEach(word => {
     const chip = createWordChip(word, false);
     bankZone.appendChild(chip);
+  });
+}
+
+// ============================================================
+//  choice 問題のレンダリング
+// ============================================================
+function renderChoice(q) {
+  const list = document.getElementById('choiceList');
+  list.innerHTML = '';
+  const opts = Array.isArray(q.options) ? q.options : [];
+  opts.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = opt;
+    btn.dataset.value = opt;
+    btn.addEventListener('click', () => {
+      if (answered) return;
+      list.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+    list.appendChild(btn);
   });
 }
 
@@ -768,6 +817,18 @@ function submitAnswer() {
     document.getElementById('bankZone').querySelectorAll('.word-chip').forEach(c => {
       c.style.opacity = '.4'; c.style.pointerEvents = 'none';
     });
+  } else if (q.type === 'choice') {
+    const selected = document.querySelector('.choice-btn.selected');
+    userAnswer = selected ? selected.dataset.value : '';
+    isCorrect  = normalize(userAnswer) === normalize(q.answer);
+    document.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.disabled = true;
+      if (normalize(btn.dataset.value) === normalize(q.answer)) {
+        btn.classList.add('correct');
+      } else if (btn.classList.contains('selected') && !isCorrect) {
+        btn.classList.add('incorrect');
+      }
+    });
   } else {
     userAnswer = document.getElementById('answerInput').value.trim();
     isCorrect  = normalize(userAnswer) === normalize(q.answer);
@@ -800,78 +861,4 @@ function showFeedback(q, isCorrect, userAnswer) {
   const expBox = document.getElementById('explanationBox');
   const expTxt = document.getElementById('explanationText');
 
-  fb.className  = 'feedback-box show ' + (isCorrect ? 'correct-fb' : 'incorrect-fb');
-  head.className = 'feedback-header ' + (isCorrect ? 'ok' : 'ng');
-  head.textContent = isCorrect ? '✅ 正解！' : '❌ 不正解';
-
-  if (!isCorrect) {
-    const display = q.answer_display || q.answer;
-    ans.innerHTML = `正解：<strong>${display}</strong>`;
-    ans.style.display = 'block';
-  } else {
-    ans.style.display = 'none';
-  }
-
-  if (q.explanation) {
-    expBox.style.display = 'block';
-    expTxt.textContent   = q.explanation;
-  }
-
-  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// ============================================================
-//  次の問題 / 結果
-// ============================================================
-function nextQuestion() {
-  current++;
-  if (current >= questions.length) {
-    showResult();
-  } else {
-    renderQuestion();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-}
-
-// ============================================================
-//  結果画面
-// ============================================================
-function showResult() {
-  const total = questions.length;
-  const pct   = Math.round((correctCount / total) * 100);
-
-  let emoji = '😢'; let title = 'もう少し頑張ろう！';
-  if (pct >= 90) { emoji = '🏆'; title = '素晴らしい！完璧に近い！'; }
-  else if (pct >= 70) { emoji = '🎉'; title = 'よくできました！'; }
-  else if (pct >= 50) { emoji = '👍'; title = 'もう少しで合格！'; }
-
-  document.getElementById('resultEmoji').textContent   = emoji;
-  document.getElementById('resultTitle').textContent   = title;
-  document.getElementById('resultCorrect').textContent = correctCount;
-  document.getElementById('resultTotal').textContent   = total;
-  document.getElementById('statCorrect').textContent   = correctCount;
-  document.getElementById('statWrong').textContent     = wrongCount;
-
-  showScreen('screen-result');
-}
-
-// ============================================================
-//  イベントリスナー
-// ============================================================
-document.getElementById('submitBtn').addEventListener('click', submitAnswer);
-document.getElementById('nextBtn').addEventListener('click', nextQuestion);
-document.getElementById('backBtn').addEventListener('click', () => {
-  if (confirm('トップに戻りますか？（進捗はリセットされます）')) {
-    showScreen('screen-start');
-  }
-});
-document.getElementById('retryBtn').addEventListener('click', startQuiz);
-document.getElementById('topBtn').addEventListener('click', () => showScreen('screen-start'));
-
-// ============================================================
-//  初期化
-// ============================================================
-initStartScreen();
-</script>
-</body>
-</html>
+  fb.className  = 'feedback-box show ' + (isCorrect ? 'correct-fb' : 'inco
