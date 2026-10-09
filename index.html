@@ -862,3 +862,66 @@ function showFeedback(q, isCorrect, userAnswer) {
   const expTxt = document.getElementById('explanationText');
 
   fb.className  = 'feedback-box show ' + (isCorrect ? 'correct-fb' : 'inco
+rrect-fb');
+  head.className = 'feedback-header ' + (isCorrect ? 'ok' : 'ng');
+  head.textContent = isCorrect ? '✅ 正解！' : '❌ 不正解';
+
+  if (!isCorrect) {
+    const display = q.answer_display || q.answer;
+    ans.innerHTML = `正解：<strong>${display}</strong>`;
+    ans.style.display = 'block';
+  } else {
+    ans.style.display = 'none';
+  }
+
+  if (q.explanation) {
+    expBox.style.display = 'block';
+    expTxt.textContent   = q.explanation;
+  }
+
+  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function nextQuestion() {
+  current++;
+  if (current >= questions.length) {
+    showResult();
+  } else {
+    renderQuestion();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function showResult() {
+  const total = questions.length;
+  const pct   = Math.round((correctCount / total) * 100);
+
+  let emoji = '😢'; let title = 'もう少し頑張ろう！';
+  if (pct >= 90) { emoji = '🏆'; title = '素晴らしい！完璧に近い！'; }
+  else if (pct >= 70) { emoji = '🎉'; title = 'よくできました！'; }
+  else if (pct >= 50) { emoji = '👍'; title = 'もう少しで合格！'; }
+
+  document.getElementById('resultEmoji').textContent   = emoji;
+  document.getElementById('resultTitle').textContent   = title;
+  document.getElementById('resultCorrect').textContent = correctCount;
+  document.getElementById('resultTotal').textContent   = total;
+  document.getElementById('statCorrect').textContent   = correctCount;
+  document.getElementById('statWrong').textContent     = wrongCount;
+
+  showScreen('screen-result');
+}
+
+document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+document.getElementById('backBtn').addEventListener('click', () => {
+  if (confirm('トップに戻りますか？（進捗はリセットされます）')) {
+    showScreen('screen-start');
+  }
+});
+document.getElementById('retryBtn').addEventListener('click', startQuiz);
+document.getElementById('topBtn').addEventListener('click', () => showScreen('screen-start'));
+
+initStartScreen();
+</script>
+</body>
+</html>
